@@ -24,8 +24,8 @@ const Index = () => {
   if (error) return <ErrorState message={error} />;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen animated-bg relative">
+      <div className="relative z-10 max-w-7xl mx-auto">
         <Header />
 
         <main className="p-6 space-y-8">
