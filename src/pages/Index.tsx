@@ -20,7 +20,8 @@ const Index = () => {
 
   const currentData = platform === 'meta' ? metaData : googleData;
 
-  if (currentData.loading) return <LoadingState />;
+  // Show loading while data or date range is being loaded
+  if (currentData.loading || !currentData.dateRange) return <LoadingState />;
   if (currentData.error) return <ErrorState message={currentData.error} />;
 
   return (
