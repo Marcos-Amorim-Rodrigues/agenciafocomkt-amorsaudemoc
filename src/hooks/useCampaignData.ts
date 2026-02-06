@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { startOfDay, endOfDay, subDays } from 'date-fns';
 import {
   parseCSV,
   CampaignData,
@@ -27,6 +28,13 @@ export interface DashboardMetrics {
   ctr: number;
 }
 
+// Função para garantir leitura local da data (evita bug de -1 dia)
+const toLocalDate = (dateInput: string | Date) => {
+  if (dateInput instanceof Date) return dateInput;
+  const [year, month, day] = dateInput.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export function useCampaignData() {
   const [rawData, setRawData] = useState<CampaignData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,26 +49,21 @@ export function useCampaignData() {
         if (!response.ok) throw new Error('Failed to fetch data');
         const text = await response.text();
         const parsed = parseCSV(text);
-        setRawData(parsed);
+
+        // Normalização imediata das datas
+        const normalizedData = parsed.map(item => ({
+          ...item,
+          date: toLocalDate(item.date)
+        }));
+
+        setRawData(normalizedData);
         
-        // Set initial date range based on data
-        if (parsed.length > 0) {
-          const dates = parsed
-            .map(d => new Date(d.date))
-            .filter(d => !isNaN(d.getTime()))
-            .sort((a, b) => a.getTime() - b.getTime());
+        if (normalizedData.length > 0) {
+          // Fixa o período inicial em 7 dias (D-7 até Ontem)
+          const to = endOfDay(subDays(new Date(), 1));
+          const from = startOfDay(subDays(to, 7)); // 7 dias para pegar a janela correta
           
-          if (dates.length > 0) {
-            const maxDate = dates[dates.length - 1];
-            const from = new Date(maxDate);
-            from.setDate(maxDate.getDate() - 29); // Last 30 days
-            from.setHours(0, 0, 0, 0);
-            
-            const to = new Date(maxDate);
-            to.setHours(23, 59, 59, 999);
-            
-            setDateRange({ from, to });
-          }
+          setDateRange({ from, to });
         }
         
         setError(null);
@@ -85,8 +88,8 @@ export function useCampaignData() {
 
     return {
       ...agg,
-      avgCPA,
-      ctr,
+      avgCPA: Number(avgCPA.toFixed(2)),
+      ctr: Number(ctr.toFixed(2)),
     };
   }, [filteredData]);
 
@@ -103,7 +106,7 @@ export function useCampaignData() {
     if (rawData.length === 0) return null;
 
     const dates = rawData
-      .map(d => new Date(d.date))
+      .map(d => toLocalDate(d.date))
       .filter(d => !isNaN(d.getTime()))
       .sort((a, b) => a.getTime() - b.getTime());
 
